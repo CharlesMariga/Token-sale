@@ -3,6 +3,7 @@ const DappToken = artifacts.require("DappToken.sol");
 let tokenInstance;
 const initialSupply = 1000000;
 const transferAmount = 250000;
+const setAllowance = 100;
 beforeEach(async () => {
   tokenInstance = await DappToken.deployed();
 });
@@ -17,7 +18,7 @@ contract("DappToken", function (accounts) {
     assert.equal(standard, "Dapp Token v1.0", "has the correct standard");
   });
 
-  it("allocatoes initial supply upon deployment", async function () {
+  it("allocates initial supply upon deployment", async function () {
     // Check that the total supply vairable has been set to the total initial
     //  coin offering
     const totalSupply = await tokenInstance.totalSupply();
@@ -90,5 +91,40 @@ contract("DappToken", function (accounts) {
       }
     );
     assert.equal(success, true, "it returns true");
+  });
+
+  it("approves tokens for delegated transfer", async function () {
+    const success = await tokenInstance.approve.call(accounts[1], 100, {
+      from: accounts[0],
+    });
+    assert.equal(success, true, "it returns true");
+    const receipt = await tokenInstance.approve(accounts[1], 100);
+    assert.equal(receipt.logs.length, 1, "triggers one event");
+    assert.equal(
+      receipt.logs[0].event,
+      "Approval",
+      "should be the 'Transfer' event"
+    );
+    assert.equal(
+      receipt.logs[0].args._owner,
+      accounts[0],
+      "logs the account the tokens are authorized by"
+    );
+    assert.equal(
+      receipt.logs[0].args._spender,
+      accounts[1],
+      "logs the account the tokens are authorized to"
+    );
+    assert.equal(
+      receipt.logs[0].args._value,
+      setAllowance,
+      "logs the transfer amount"
+    );
+    const allowance = await tokenInstance.allowance(accounts[0], accounts[1]);
+    assert.equal(
+      allowance.toNumber(),
+      setAllowance,
+      "stores the allowance for delegated transfer"
+    );
   });
 });
