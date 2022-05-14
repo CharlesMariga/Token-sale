@@ -1,3 +1,3 @@
 # Token sale
 
-This is a token sale implemented using two solidity smart contracts, following the ERC20 standard
+This is an ERC20 token implemented on the Ethereum blockchain and sold via a crowd sale Initial Coin Offering (ICO) website
