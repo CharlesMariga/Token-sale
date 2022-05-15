@@ -1,14 +1,14 @@
 const DappTokenSale = artifacts.require("DappTokenSale.sol");
 const DappToken = artifacts.require("DappToken.sol");
 
-let tokeSaleInstance;
+let tokenSaleInstance;
 let tokenInstance;
 let buyer;
 let admin;
 let tokensAvailable = 750000;
 let tokenPrice = 1000000000000000;
 beforeEach(async () => {
-  tokeSaleInstance = await DappTokenSale.deployed();
+  tokenSaleInstance = await DappTokenSale.deployed();
   tokenInstance = await DappToken.deployed();
 });
 
@@ -17,21 +17,21 @@ contract("DappTokenSale", function (accounts) {
   buyer = accounts[1];
 
   it("initializes the contract with the correct values", async function () {
-    let address = await tokeSaleInstance.address;
+    let address = await tokenSaleInstance.address;
     assert.notEqual(address, 0x0, "doesn't have a contract address");
-    address = await tokeSaleInstance.tokenContract();
+    address = await tokenSaleInstance.tokenContract();
     assert.notEqual(address, 0x0, "has token contract address");
-    const price = await tokeSaleInstance.tokenPrice();
+    const price = await tokenSaleInstance.tokenPrice();
     assert.equal(price, tokenPrice, "token price is not set correctly");
   });
 
   it("facilitates token buying", async function () {
-    await tokenInstance.transfer(tokeSaleInstance.address, tokensAvailable, {
+    await tokenInstance.transfer(tokenSaleInstance.address, tokensAvailable, {
       from: admin,
     });
     const numberOfTokens = 10;
     const value = numberOfTokens * tokenPrice;
-    const receipt = await tokeSaleInstance.buyTokens(numberOfTokens, {
+    const receipt = await tokenSaleInstance.buyTokens(numberOfTokens, {
       from: buyer,
       value,
     });
@@ -47,7 +47,7 @@ contract("DappTokenSale", function (accounts) {
       numberOfTokens,
       "logs the number of tokens purchased"
     );
-    const amount = await tokeSaleInstance.tokensSold();
+    const amount = await tokenSaleInstance.tokensSold();
     assert.equal(
       amount.toNumber(),
       numberOfTokens,
@@ -55,7 +55,7 @@ contract("DappTokenSale", function (accounts) {
     );
 
     try {
-      await tokeSaleInstance.buyTokens(numberOfTokens, {
+      await tokenSaleInstance.buyTokens(numberOfTokens, {
         from: buyer,
         value: 1,
       });
@@ -68,7 +68,7 @@ contract("DappTokenSale", function (accounts) {
     }
 
     try {
-      await tokeSaleInstance.buyTokens(800000, {
+      await tokenSaleInstance.buyTokens(800000, {
         from: buyer,
         value: 800000 * tokenPrice,
       });
@@ -80,7 +80,7 @@ contract("DappTokenSale", function (accounts) {
       );
     }
 
-    const balance = await tokenInstance.balanceOf(tokeSaleInstance.address);
+    const balance = await tokenInstance.balanceOf(tokenSaleInstance.address);
     assert.equal(
       balance.toNumber(),
       tokensAvailable - numberOfTokens,
@@ -92,5 +92,30 @@ contract("DappTokenSale", function (accounts) {
       numberOfTokens,
       "tokens weren't transferred successfully"
     );
+  });
+
+  it("ends token sale", async function () {
+    try {
+      await tokenSaleInstance.endSale({ from: buyer });
+      assert(false);
+    } catch (err) {
+      assert(
+        err.message.indexOf("revert") >= 0,
+        "must be admin to end the sale"
+      );
+    }
+
+    await tokenSaleInstance.endSale({ from: admin });
+    const balance = await tokenInstance.balanceOf(admin);
+    assert.equal(
+      balance.toNumber(),
+      999990,
+      "returns all unsold dapp tokens to admin"
+    );
+    try {
+      await tokenSaleInstance.tokenPrice();
+    } catch (err) {
+      assert(true);
+    }
   });
 });
