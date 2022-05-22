@@ -68,10 +68,41 @@
 <script>
 import { ref, onMounted } from "vue";
 import { ethers } from "ethers";
+import { abi as DappTokenAbi } from "../../build/contracts/DappToken.json";
 
 export default {
   setup() {
     let loading = ref(false);
+    let provider = ref(null);
+    const DappTokenAddress = "0x4f37767bf2f8f8dFCEB540d65983cE8ab7F17A0E";
+    const DappTokenSaleAddress = "0xbf7c15A5269F22F96F0C11a31468D5e9c7448e04";
+    let DappTokenContract = ref(null);
+    let DappTokenSaleContract = ref(null);
+
+    const initWeb3 = async () => {
+      if (window?.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        // await provider.send("eth_requestAccounts", []);
+      } else {
+        provider = new ethers.providers.JsonRpcProvider();
+      }
+    };
+
+    const initContracts = async () => {
+      DappTokenContract = new ethers.Contract(
+        DappTokenAddress,
+        DappTokenAbi,
+        provider
+      );
+      const address = await DappTokenContract.address;
+      console.log("Address: ", address);
+    };
+
+    onMounted(() => {
+      console.log("App initialized...");
+      initWeb3();
+      initContracts();
+    });
 
     return { loading };
   },
