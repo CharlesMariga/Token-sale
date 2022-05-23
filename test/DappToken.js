@@ -16,6 +16,8 @@ contract("DappToken", function (accounts) {
     assert.equal(symbol, "DAPP", "has the correct symbol");
     const standard = await tokenInstance.standard();
     assert.equal(standard, "Dapp Token v1.0", "has the correct standard");
+    const decimals = await tokenInstance.decimals();
+    assert.equal(decimals, 18, "does not have the correct decimals");
   });
 
   it("allocates initial supply upon deployment", async function () {

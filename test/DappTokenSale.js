@@ -68,14 +68,14 @@ contract("DappTokenSale", function (accounts) {
     }
 
     try {
-      await tokenSaleInstance.buyTokens(800000, {
+      await tokenSaleInstance.buyTokens(775000, {
         from: buyer,
-        value: 800000 * tokenPrice,
+        value: 775000 * tokenPrice,
       });
       assert(false);
     } catch (err) {
       assert(
-        err.message.indexOf("revert") >= 0,
+        err.message.indexOf("enough") >= 0,
         "cannot purchase more tokens than available"
       );
     }
