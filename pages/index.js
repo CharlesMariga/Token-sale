@@ -1,8 +1,44 @@
-import Head from "next/head";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Web3 from "web3";
+
+import "bootstrap/dist/css/bootstrap.min.css";
+import detectEthereumProvider from "@metamask/detect-provider";
+
+import dappTokenSaleArtifact from "../build/contracts/DappTokenSale.json";
 
 export default function Home() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [web3, setWeb3] = useState(null);
+  const [provider, setProvider] = useState(null);
+  const [dappTokenSaleContract, setDappTokenSaleContract] = useState(null);
+
+  useEffect(async () => {
+    // Set provider
+    setProvider(await detectEthereumProvider());
+
+    // Initialize web3
+    if (provider) {
+      setWeb3(new Web3(window.ethereum));
+    } else {
+      setProvider(new Web3.providers.HttpProvider("https://localhost:8545"));
+      setWeb3(new Web3(provider));
+    }
+
+    // Initialize contracts
+    if (web3) {
+      setDappTokenSaleContract(
+        new web3.eth.Contract(
+          dappTokenSaleArtifact.abi,
+          dappTokenSaleArtifact.networks[5777].address
+        )
+      );
+      dappTokenSaleContract?.setProvider(provider);
+    }
+
+    const timeOut = setTimeout(() => setLoading(false), 1000);
+
+    return () => clearTimeout(timeOut);
+  }, []);
 
   return (
     <>
@@ -71,6 +107,16 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .loader {
+          width: 100vw;
+          height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      `}</style>
     </>
   );
 }
