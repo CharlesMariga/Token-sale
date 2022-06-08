@@ -5,40 +5,60 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import detectEthereumProvider from "@metamask/detect-provider";
 
 import dappTokenSaleArtifact from "../build/contracts/DappTokenSale.json";
+import dappTokenArtifact from "../build/contracts/DappToken.json";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
-  const [web3, setWeb3] = useState(null);
-  const [provider, setProvider] = useState(null);
   const [dappTokenSaleContract, setDappTokenSaleContract] = useState(null);
+  const [dappTokenContract, setDappTokenContract] = useState(null);
+  const [accounts, setAccounts] = useState([]);
 
-  useEffect(async () => {
-    // Set provider
-    setProvider(await detectEthereumProvider());
-
-    // Initialize web3
-    if (provider) {
-      setWeb3(new Web3(window.ethereum));
-    } else {
-      setProvider(new Web3.providers.HttpProvider("https://localhost:8545"));
-      setWeb3(new Web3(provider));
-    }
-
-    // Initialize contracts
-    if (web3) {
-      setDappTokenSaleContract(
-        new web3.eth.Contract(
-          dappTokenSaleArtifact.abi,
-          dappTokenSaleArtifact.networks[5777].address
-        )
-      );
-      dappTokenSaleContract?.setProvider(provider);
-    }
-
+  useEffect(() => {
+    let web3;
+    let provider;
     const timeOut = setTimeout(() => setLoading(false), 1000);
+
+    const initApp = async () => {
+      // Initialize the provider
+      provider = await detectEthereumProvider();
+
+      // Initialize web3
+      if (provider) {
+        web3 = new Web3(window.ethereum);
+      } else {
+        provider = new Web3.providers.HttpProvider("https://localhost:8545");
+        web3 = new Web3(provider);
+      }
+
+      // Initialize contracts
+      if (web3) {
+        setDappTokenSaleContract(
+          new web3.eth.Contract(
+            dappTokenSaleArtifact.abi,
+            dappTokenSaleArtifact.networks[5777].address
+          )
+        );
+        dappTokenSaleContract?.setProvider(provider);
+        setDappTokenContract(
+          new web3.eth.Contract(
+            dappTokenArtifact.abi,
+            dappTokenArtifact.networks[5777].address
+          )
+        );
+        dappTokenContract?.setProvider(provider);
+      }
+
+      // Initialize the accounts
+      console.log("Accounts: ", await web3.eth.getAccounts());
+      setAccounts([]);
+    };
+
+    initApp();
 
     return () => clearTimeout(timeOut);
   }, []);
+
+  console.log(accounts);
 
   return (
     <>
