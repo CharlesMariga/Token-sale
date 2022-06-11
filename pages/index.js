@@ -1,64 +1,86 @@
 import { useState, useEffect } from "react";
-import Web3 from "web3";
 
 import "bootstrap/dist/css/bootstrap.min.css";
-import detectEthereumProvider from "@metamask/detect-provider";
 
-import dappTokenSaleArtifact from "../build/contracts/DappTokenSale.json";
-import dappTokenArtifact from "../build/contracts/DappToken.json";
+import NoticeIcon from "../assets/icons/notice.js";
+import web3 from "../setup/web3";
+import dappTokenSaleContract from "../setup/DappTokenSale";
+import dappTokenContract from "../setup/DappToken";
 
 export default function Home() {
+  let tokensAvailable = 750000;
   const [loading, setLoading] = useState(true);
-  const [dappTokenSaleContract, setDappTokenSaleContract] = useState(null);
-  const [dappTokenContract, setDappTokenContract] = useState(null);
-  const [accounts, setAccounts] = useState([]);
+  const [account, setAccount] = useState(null);
+  const [tokenPrice, setTokenPrice] = useState(0);
+  const [tokensSold, setTokensSold] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [value, setValue] = useState("");
 
   useEffect(() => {
-    let web3;
-    let provider;
-    const timeOut = setTimeout(() => setLoading(false), 1000);
+    let timeOut;
 
     const initApp = async () => {
-      // Initialize the provider
-      provider = await detectEthereumProvider();
+      // Initialize the account
+      const coinBase = await web3.eth.getCoinbase();
+      setAccount(coinBase);
 
-      // Initialize web3
-      if (provider) {
-        web3 = new Web3(window.ethereum);
-      } else {
-        provider = new Web3.providers.HttpProvider("https://localhost:8545");
-        web3 = new Web3(provider);
-      }
+      // Get the  tokens price
+      const tokenprice = await dappTokenSaleContract?.methods
+        ?.tokenPrice()
+        .call();
+      setTokenPrice(tokenprice || 0);
 
-      // Initialize contracts
-      if (web3) {
-        setDappTokenSaleContract(
-          new web3.eth.Contract(
-            dappTokenSaleArtifact.abi,
-            dappTokenSaleArtifact.networks[5777].address
-          )
-        );
-        dappTokenSaleContract?.setProvider(provider);
-        setDappTokenContract(
-          new web3.eth.Contract(
-            dappTokenArtifact.abi,
-            dappTokenArtifact.networks[5777].address
-          )
-        );
-        dappTokenContract?.setProvider(provider);
-      }
+      await getTokensSold();
 
-      // Initialize the accounts
-      console.log("Accounts: ", await web3.eth.getAccounts());
-      setAccounts([]);
+      await getAccountBalance();
+
+      // listen for events
+      dappTokenSaleContract.events.Sell({}).on("data", (event) => {
+        console.log("Event triggered: ", event);
+        // window.location.reload(false);
+      });
     };
 
     initApp();
 
-    return () => clearTimeout(timeOut);
-  }, []);
+    if (loading) timeOut = setTimeout(() => setLoading(false), 1000);
 
-  console.log(accounts);
+    return () => clearTimeout(timeOut);
+  }, [account]);
+
+  const getTokensSold = async () => {
+    // Get the tokens sold
+    const tokenssold = await dappTokenSaleContract?.methods
+      ?.tokensSold()
+      .call();
+    setTokensSold(tokenssold);
+  };
+
+  const getAccountBalance = async () => {
+    // Get the account balance
+    if (account) {
+      const balance = await dappTokenContract?.methods
+        ?.balanceOf(account)
+        ?.call();
+      setBalance(balance);
+    }
+  };
+
+  const buyTokens = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await dappTokenSaleContract?.methods?.buyTokens(value).send({
+        from: account,
+        value: value * tokenPrice,
+      });
+      await getTokensSold();
+      await getAccountBalance();
+    } catch (err) {
+      console.log("Error! ", err);
+    }
+    setLoading(false);
+  };
 
   return (
     <>
@@ -74,46 +96,51 @@ export default function Home() {
             </div>
             <div className="text-center">
               <p>
-                Intoruducing "Dapp Token" (DAPP). Token price is
-                <span className="toke-price"></span> Ether. You currently has
-                <span className="dapp-balance"></span>&nbsp;DARPP
+                Introducing "Dapp Token" (DAPP). Token price is{" "}
+                <span className="toke-price">
+                  {web3?.utils?.fromWei(`${tokenPrice || 0}`, "ether")}
+                </span>{" "}
+                ETH. You currently have{" "}
+                <span className="dapp-balance">{balance}</span>
+                &nbsp;DAPP tokens.
               </p>
               <br />
-              <form className="form-inline w-100">
+              <form
+                className="form-inline w-100"
+                onSubmit={(e) => buyTokens(e)}
+              >
                 <div className="input-group w-100">
                   <input
-                    type="email"
+                    type="number"
                     className="form-control input-lg"
                     size="50"
-                    placeholder="Email Address"
+                    placeholder="Number of tokens"
+                    onChange={(e) => setValue(e.target.value)}
                     required={true}
                   />
                   <div className="input-group-btn">
-                    <button type="button" className="btn btn-primary">
-                      Subscribe
+                    <button type="submit" className="btn btn-primary">
+                      Buy Tokens
                     </button>
                   </div>
                 </div>
               </form>
               <br />
               <div className="progress mb-2">
-                <div className="progress-bar" style={{ width: "70%" }}></div>
+                <div
+                  className="progress-bar"
+                  style={{
+                    width: `${(tokensSold / tokensAvailable) * 100}%`,
+                  }}
+                ></div>
               </div>
-              <p>/ tokens sold</p>
+              <p>
+                {tokensSold} out of {tokensAvailable} tokens sold
+              </p>
               <div className="alert alert-primary">
                 <p>
                   <strong>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                      className="bi bi-exclamation-circle-fill"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />
-                    </svg>
-                    Notice
+                    <NoticeIcon />
                   </strong>
                   This token sale uses the Rinkeby Test Network with fake ether.
                   Use a browser extenstion like Metamask to connect to the test
@@ -122,7 +149,7 @@ export default function Home() {
                 </p>
               </div>
               <hr />
-              <p>Account:</p>
+              <p>Your account: {account}</p>
             </div>
           </div>
         </div>
