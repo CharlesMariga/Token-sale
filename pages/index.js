@@ -21,8 +21,7 @@ export default function Home() {
 
     const initApp = async () => {
       // Initialize the account
-      const coinBase = await web3.eth.getCoinbase();
-      setAccount(coinBase);
+      await getAccount();
 
       // Get the  tokens price
       const tokenprice = await dappTokenSaleContract?.methods
@@ -30,14 +29,15 @@ export default function Home() {
         .call();
       setTokenPrice(tokenprice || 0);
 
+      // Get the tokens sold
       await getTokensSold();
 
+      // Get the account balance
       await getAccountBalance();
 
       // listen for events
       dappTokenSaleContract.events.Sell({}).on("data", (event) => {
         console.log("Event triggered: ", event);
-        // window.location.reload(false);
       });
     };
 
@@ -48,8 +48,12 @@ export default function Home() {
     return () => clearTimeout(timeOut);
   }, [account]);
 
+  const getAccount = async () => {
+    const coinBase = await web3.eth.getCoinbase();
+    setAccount(coinBase);
+  };
+
   const getTokensSold = async () => {
-    // Get the tokens sold
     const tokenssold = await dappTokenSaleContract?.methods
       ?.tokensSold()
       .call();
@@ -57,7 +61,6 @@ export default function Home() {
   };
 
   const getAccountBalance = async () => {
-    // Get the account balance
     if (account) {
       const balance = await dappTokenContract?.methods
         ?.balanceOf(account)
@@ -80,6 +83,22 @@ export default function Home() {
       console.log("Error! ", err);
     }
     setLoading(false);
+  };
+
+  const connectMetamask = async () => {
+    if (typeof window !== "undefined" && window.ethereum) {
+      try {
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        await getAccount();
+      } catch (error) {
+        if (error.code === 4001) {
+          // EIP-1193 userRejectedRequest error
+          console.log("Please connect to MetaMask.");
+        } else {
+          console.error(error);
+        }
+      }
+    }
   };
 
   return (
@@ -149,7 +168,13 @@ export default function Home() {
                 </p>
               </div>
               <hr />
-              <p>Your account: {account}</p>
+              {account && window.ethereum ? (
+                <p>Your account: {account}</p>
+              ) : (
+                <button className="btn btn-success" onClick={connectMetamask}>
+                  Connect to metamask
+                </button>
+              )}
             </div>
           </div>
         </div>
